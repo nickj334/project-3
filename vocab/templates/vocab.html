@@ -77,7 +77,8 @@
                   <label for="attempt">Word:</label>
                   <input id="attempt" name="attempt" type="text" width="15"
                      autocomplete="off"  autofocus />
-            </div>
+           	</form>
+	    </div>
          </div>
          <br />
          <h2>You found </h2>
@@ -86,7 +87,7 @@
          
   
          <!-- Mismatch, already found, etc. "flashed" from Python -->
-        
+       	 
          <p class="message">{{ message }}</p>
         
         
@@ -114,15 +115,18 @@
 				if ("error" in data) {
 					var errorMessage = data.error;
 					console.log("Error: " + errorMessage)
-				} else {
+				} else {	
 					var message = data.result.message;
+					
 					var matches = data.result.matches;
 					var redirect = data.result.redirect;
 					
 					//var matchesList = [];
 					//matchesList.push(matches);
 					var matchesElement = document.getElementById("results");
-					matchesElement.textContent = matches.join("/n");
+					if (Array.isArray(matches) && matches.length > 0) {
+						matchesElement.textContent = matches.join("\n");
+					}
 
 			
 					

@@ -93,42 +93,39 @@ def check():
     """
     app.logger.debug("Entering check")
 
-    try:
-        result = {}
+    result = {}
     # The data we need, from form and from cookie
-        text = request.args.get("text")
-        jumble = flask.session["jumble"]
-        matches = flask.session.get("matches", [])
+    text = request.args.get("text")
+    jumble = flask.session["jumble"]
+    matches = flask.session.get("matches", [])
     # Is it good?
-        in_jumble = LetterBag(jumble).contains(text)
-        matched = WORDS.has(text)
+    in_jumble = LetterBag(jumble).contains(text)
+    matched = WORDS.has(text)
     # Respond appropriately
-        if matched and in_jumble and not (text in matches):
+    if matched and in_jumble and not (text in matches):
         # Cool, they found a new word
-            matches.append(text)
-            result["matches"] = matches
-        elif text in matches:
-            result["message"] = "You already found {}".format(text)
-        elif not matched:
-            result["message"] = "{} isn't in the list of words".format(text)
-        elif not in_jumble:
-            result["message"] = '"{}" can\'t be made from the letters {}'.format(text, jumble)
-        else:
-            app.logger.debug("This case shouldn't happen!")
-            assert False  # Raises AssertionError
+        matches.append(text)
+        flask.session["matches"] = matches
+        result["matches"] = matches
+        result["message"] = "You found a new match!"
+    elif text in matches:
+        result["message"] = "You already found {}".format(text)
+    elif not matched:
+        result["message"] = "{} isn't in the list of words".format(text)
+    elif not in_jumble:
+        result["message"] = '"{}" can\'t be made from the letters {}'.format(text, jumble)
+    else:
+        app.logger.debug("This case shouldn't happen!")
+        assert False  # Raises AssertionError
 
     # Choose page:  Solved enough, or keep going?
-        if len(matches) >= flask.session["target_count"]:
-            result["redirect"] = flask.url_for("success")
-        else:
-            result["redirect"] = flask.url_for("keep_going")
+    if len(matches) >= flask.session["target_count"]:
+        result["redirect"] = flask.url_for("success")
+    else:
+        result["redirect"] = flask.url_for("keep_going")
 
-        app.logger.debug("redirect is {}".format(result["redirect"]))
-        app.logger.debug("matches is {}".format(result["matches"]))
-        return flask.jsonify(result=result)
+    return flask.jsonify(result=result)
 
-    except Exception as e:
-        return flask.jsonify(error=str(e))
 ###############
 # AJAX request handlers
 #   These return JSON, rather than rendering pages.
