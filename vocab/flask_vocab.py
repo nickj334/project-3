@@ -107,7 +107,6 @@ def check():
         matches.append(text)
         flask.session["matches"] = matches
         result["matches"] = matches
-        result["message"] = "You found a new match!"
     elif text in matches:
         result["message"] = "You already found {}".format(text)
     elif not matched:
