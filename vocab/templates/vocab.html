@@ -73,32 +73,69 @@
          <br />
          <div class="row">
             <div class="col-xs-6 text-center">
-               <form id="entry" method="POST" action="/_check">
+		<form id="entry" method="POST" action="/_check">
                   <label for="attempt">Word:</label>
                   <input id="attempt" name="attempt" type="text" width="15"
                      autocomplete="off"  autofocus />
-                  <input type="submit" name="try" />
-               </form>
             </div>
          </div>
          <br />
-         {% if session.matches|length is not equalto 0  %}
          <h2>You found </h2>
          <p id="results">
-            {% for match in session.matches %}
-            {{ match }}
-            {% endfor %}
          </p>
-         {% endif %}
-         {% with messages = get_flashed_messages() %}
-         {% if messages %}
+         
+  
          <!-- Mismatch, already found, etc. "flashed" from Python -->
-         {% for message in messages %}
+        
          <p class="message">{{ message }}</p>
-         {% endfor %}
-         {% endif %}
-         {% endwith %}
-      </div>
+        
+        
+         </div>
       <!-- container -->
+
+
+      <script>
+	$("#entry").submit( function(event) {
+		event.preventDefault();
+	});
+	
+
+	$("#attempt").keyup(function(event) {
+		console.log("Keyup event triggered!")
+		var txt = $("#attempt").val(); // current contents of the input field
+		var keycode = event.which;	// the key that just went up
+		var letter = String.fromCharCode(keycode);
+
+
+		if (! "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(letter)) { return }
+
+		$.getJSON( "/_check", { text: txt },
+			function(data) {
+				if ("error" in data) {
+					var errorMessage = data.error;
+					console.log("Error: " + errorMessage)
+				} else {
+					var message = data.result.message;
+					var matches = data.result.matches;
+					var redirect = data.result.redirect;
+					
+					//var matchesList = [];
+					//matchesList.push(matches);
+					var matchesElement = document.getElementById("results");
+					matchesElement.textContent = matches.join("/n");
+
+			
+					
+					$(".message").text(message);
+					if (redirect == "/success"){
+						window.location.replace(redirect);
+					}
+				}
+			}
+			 );
+	});	
+      </script>
+						
+
    </body>
 </html>
