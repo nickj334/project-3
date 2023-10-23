@@ -5,6 +5,8 @@ from a scrambled string)
 """
 
 import flask
+from flask import request, session
+
 import logging
 
 # Our modules
@@ -79,7 +81,7 @@ def success():
 #   a JSON request handler
 #######################
 
-@app.route("/_check", methods=["POST"])
+@app.route("/_check", methods=["POST", "GET"])
 def check():
     """
     User has submitted the form with a word ('attempt')
@@ -91,38 +93,42 @@ def check():
     """
     app.logger.debug("Entering check")
 
+    try:
+        result = {}
     # The data we need, from form and from cookie
-    text = flask.request.form["attempt"]
-    jumble = flask.session["jumble"]
-    matches = flask.session.get("matches", [])  # Default to empty list
-
+        text = request.args.get("text")
+        jumble = flask.session["jumble"]
+        matches = flask.session.get("matches", [])
     # Is it good?
-    in_jumble = LetterBag(jumble).contains(text)
-    matched = WORDS.has(text)
-
+        in_jumble = LetterBag(jumble).contains(text)
+        matched = WORDS.has(text)
     # Respond appropriately
-    if matched and in_jumble and not (text in matches):
+        if matched and in_jumble and not (text in matches):
         # Cool, they found a new word
-        matches.append(text)
-        flask.session["matches"] = matches
-    elif text in matches:
-        flask.flash("You already found {}".format(text))
-    elif not matched:
-        flask.flash("{} isn't in the list of words".format(text))
-    elif not in_jumble:
-        flask.flash(
-            '"{}" can\'t be made from the letters {}'.format(text, jumble))
-    else:
-        app.logger.debug("This case shouldn't happen!")
-        assert False  # Raises AssertionError
+            matches.append(text)
+            result["matches"] = matches
+        elif text in matches:
+            result["message"] = "You already found {}".format(text)
+        elif not matched:
+            result["message"] = "{} isn't in the list of words".format(text)
+        elif not in_jumble:
+            result["message"] = '"{}" can\'t be made from the letters {}'.format(text, jumble)
+        else:
+            app.logger.debug("This case shouldn't happen!")
+            assert False  # Raises AssertionError
 
     # Choose page:  Solved enough, or keep going?
-    if len(matches) >= flask.session["target_count"]:
-       return flask.redirect(flask.url_for("success"))
-    else:
-       return flask.redirect(flask.url_for("keep_going"))
+        if len(matches) >= flask.session["target_count"]:
+            result["redirect"] = flask.url_for("success")
+        else:
+            result["redirect"] = flask.url_for("keep_going")
 
+        app.logger.debug("redirect is {}".format(result["redirect"]))
+        app.logger.debug("matches is {}".format(result["matches"]))
+        return flask.jsonify(result=result)
 
+    except Exception as e:
+        return flask.jsonify(error=str(e))
 ###############
 # AJAX request handlers
 #   These return JSON, rather than rendering pages.
@@ -137,6 +143,34 @@ def example():
     rslt = {"key": "value"}
     return flask.jsonify(result=rslt)
 
+@app.route("/_check/word", methods=["POST"])
+def check_word():
+    
+    # Grab data from the AJAX request
+    text = flask.request.form["attempt"]
+    jumble = flask.session["jumble"]
+    matches = flask.session.get("matches", [])
+
+    # Checking if word is a match to a word in letterbag
+    in_jumble = LetterBag(jumble).contains(text)
+    matched = WORDS.has(text)
+
+    # Prepare the response data
+    response = {
+            "valid_word": matched and in_jumble,
+            "already_found": text in matches,
+    }
+
+    # Update found words if the word is valid
+    if response["valid_word"] and not response["already_found"]:
+        matches.append(text)
+        flask.session["matches"] = matches
+    
+    # Choose page: Success or keep going
+    if len(matches) >= flask.session["target_count"]:
+        response["redirect_url"] = flask.url_for("success")
+
+    return flask.jsonify(result=response)
 
 #################
 # Functions used within the templates
